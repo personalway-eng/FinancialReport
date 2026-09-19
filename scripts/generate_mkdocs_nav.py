@@ -16,6 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ARCHIVE_ROOT = Path('docs/archive')
+HOME_PAGE = Path('docs/index.md')
 
 def _is_date_dir_name(name: str) -> bool:
     return re.match(r'^\d{4}-\d{2}-\d{2}', name) is not None
@@ -34,6 +35,59 @@ def get_archive_structure():
             if date_dirs:
                 result[month_dir.name] = sorted(date_dirs, key=lambda p: p.name, reverse=True)
     return dict(sorted(result.items(), key=lambda kv: kv[0], reverse=True))
+
+def get_latest_x_economic_brief():
+    """返回最新的 X 关注时间线经济简报及其相对于 docs 的路径。"""
+    if not ARCHIVE_ROOT.exists():
+        return None
+
+    briefs = []
+    for report in ARCHIVE_ROOT.glob('*/**/reports/x_timeline_economic_brief_*.md'):
+        # 目录日期与文件名均包含日期；用路径排序可稳定取得最新报告。
+        briefs.append(report)
+
+    if not briefs:
+        return None
+    return max(briefs, key=lambda item: item.as_posix())
+
+def update_homepage():
+    """把首页更新为最新 X 经济简报，避免用户只能通过多层导航查阅报告。"""
+    latest_report = get_latest_x_economic_brief()
+    if latest_report is None:
+        return
+
+    report_text = latest_report.read_text(encoding='utf-8').strip()
+    report_lines = report_text.splitlines()
+    if report_lines and report_lines[0].startswith('# '):
+        report_text = '\n'.join(report_lines[1:]).lstrip()
+    # 原报告中使用两个行尾空格实现换行；首页生成时改用 HTML 换行，
+    # 以便 Git 的空白检查保持通过。
+    report_text = report_text.replace('  \n', '<br>\n')
+
+    report_path = latest_report.relative_to('docs').as_posix()
+    HOME_PAGE.write_text(
+        f"""# 今日财经分析报告
+
+本页展示最新生成的 **X 关注时间线经济简报**。每天北京时间 08:30 更新；内容仅供信息参考，不构成投资建议。
+
+[打开独立报告页](./{report_path}){{ .md-button .md-button--primary }}
+
+---
+
+{report_text}
+
+---
+
+<details>
+<summary>关于本系统</summary>
+
+本系统会采集公开财经信息，并将 X 关注时间线中的经济、市场、行业与政策相关内容整理为每日简报。历史报告可通过顶部“分析报告”导航查看。
+
+</details>
+""",
+        encoding='utf-8'
+    )
+    print(f"✅ 首页已更新为最新 X 经济简报：{report_path}")
 
 def get_analysis_files(date_dir):
     """获取指定日期目录下的分析文件"""
@@ -258,6 +312,9 @@ def update_mkdocs_config():
     
     # 更新配置
     config['nav'] = new_nav
+
+    # 首页与导航必须使用同一次扫描的报告数据，确保最新报告一眼可见。
+    update_homepage()
     
     # 写回文件
     with open('mkdocs.yml', 'w', encoding='utf-8') as f:
