@@ -7,9 +7,13 @@
 
 import os
 import re
+import sys
 import yaml
 from datetime import datetime
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ARCHIVE_ROOT = Path('docs/archive')
 
@@ -127,6 +131,9 @@ def format_report_name(report_file):
     - Gemini报告 (旧格式)
     """
     # 场次映射（简化为 AM/PM）
+    if report_file.startswith('x_timeline_economic_brief_'):
+        return 'X 关注经济简报'
+
     session_map = {
         'morning': 'AM',
         'afternoon': 'PM',
@@ -173,6 +180,9 @@ def generate_nav_structure():
     """生成导航结构"""
     nav = [
         {"首页": "index.md"},
+        {"使用指南": [
+            {"X 关注时间线接入": "X_API_INTEGRATION.md"},
+        ]},
         {"分析报告": []}
     ]
     
@@ -233,7 +243,7 @@ def generate_nav_structure():
                     month_nav[month_display].append(date_nav)
             
             if month_nav[month_display]:  # 只有当有内容时才添加
-                nav[1]["分析报告"].append(month_nav)
+                nav[2]["分析报告"].append(month_nav)
     
     return nav
 

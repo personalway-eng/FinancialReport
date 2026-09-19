@@ -1,7 +1,7 @@
 site_name: 财经分析报告系统
 site_description: 基于AI的财经分析报告生成系统
 site_author: Financial Report System
-site_url: https://qipeijun.github.io/Financial-report/
+site_url: https://personalway-eng.github.io/FinancialReport/
 docs_dir: docs
 use_directory_urls: true
 exclude_docs: '**/rss_data/**
@@ -13,8 +13,8 @@ exclude_docs: '**/rss_data/**
   **/*.txt
 
   '
-repo_name: qipeijun/Financial-report
-repo_url: https://github.com/qipeijun/Financial-report
+repo_name: personalway-eng/FinancialReport
+repo_url: https://github.com/personalway-eng/FinancialReport
 edit_uri: edit/main/docs/
 theme:
   name: material
@@ -67,7 +67,12 @@ markdown_extensions:
     permalink: true
 nav:
 - 首页: index.md
+- 使用指南:
+  - X 关注时间线接入: X_API_INTEGRATION.md
 - 分析报告:
+  - 2026年09月:
+    - '2026-09-19':
+      - X 关注经济简报: archive/2026-09/2026-09-19/reports/x_timeline_economic_brief_2026-09-19.md
   - 2026年08月:
     - '2026-08-13':
       - AM DeepSeek报告: archive/2026-08/2026-08-13/reports/📅 2026-08-13 财经分析报告_morning_deepseek.md
@@ -635,5 +640,5 @@ nav:
 extra:
   social:
   - icon: fontawesome/brands/github
-    link: https://github.com/qipeijun
+    link: https://github.com/personalway-eng
 copyright: Copyright &copy; 2025 财经分析报告系统

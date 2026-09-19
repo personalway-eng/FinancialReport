@@ -1,0 +1,76 @@
+name: Daily X Economic Brief
+
+on:
+  schedule:
+    # 00:30 UTC = 08:30 Asia/Shanghai (China Standard Time)
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: x-economic-brief
+  cancel-in-progress: false
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  collect-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository and database
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Collect X following timeline
+        env:
+          X_USER_ACCESS_TOKEN: ${{ secrets.X_USER_ACCESS_TOKEN }}
+        run: python scripts/x_timeline_collector.py --max-results 100 --pages 1
+
+      - name: Generate economic brief and documentation navigation
+        run: |
+          python scripts/x_economic_brief.py --hours 24
+          python scripts/generate_mkdocs_nav.py
+          mkdocs build
+
+      - name: Commit the new report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/archive mkdocs.yml
+          if git diff --cached --quiet; then
+            echo "No new report changes to commit."
+          else
+            git commit -m "chore: update X economic brief"
+            git push
+          fi
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Write run summary
+        run: |
+          echo "## X 关注时间线经济简报" >> "$GITHUB_STEP_SUMMARY"
+          echo "已采集、筛选、公开发布今日报告。" >> "$GITHUB_STEP_SUMMARY"
+          echo "页面地址：${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

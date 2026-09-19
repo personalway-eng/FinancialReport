@@ -1,5 +1,6 @@
 # Ignore user-specific config (copy from config/config.example.yml)
 config/config.yml
+config/x_credentials.env
 
 # MkDocs 构建输出
  site/
@@ -31,6 +32,7 @@ MANIFEST
 venv/
 env/
 ENV/
+.venv/
 
 # IDE
 .vscode/
