@@ -13,6 +13,7 @@ import argparse
 import re
 import sqlite3
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -62,6 +63,87 @@ class Post:
     author: str
     themes: tuple[str, ...]
     translated: bool
+
+
+@dataclass(frozen=True)
+class AssetQuote:
+    """A market snapshot with an explicit source and freshness timestamp."""
+
+    asset: str
+    value: str | None
+    unit: str
+    change: float | None
+    timestamp: str | None
+    source: str
+    source_url: str
+    error: str | None = None
+
+
+ASSET_RULES = {
+    "A股": {
+        "terms": ("a股", "a-share", "a shares", "上证", "沪指", "深证", "创业板", "沪深"),
+        "symbol": "000001.SS",
+        "unit": "点",
+        "source": "Yahoo Finance（上证综合指数）",
+        "url": "https://finance.yahoo.com/quote/000001.SS/",
+    },
+    "港股": {
+        "terms": ("港股", "恒生", "恒指", "hang seng", "hong kong stocks", "hsi"),
+        "symbol": "^HSI",
+        "unit": "点",
+        "source": "Yahoo Finance（恒生指数）",
+        "url": "https://finance.yahoo.com/quote/%5EHSI/",
+    },
+    "美股": {
+        "terms": ("美股", "标普", "纳指", "道指", "s&p 500", "nasdaq", "dow jones", "us stocks"),
+        "symbol": "^GSPC",
+        "unit": "点",
+        "source": "Yahoo Finance（标普500指数）",
+        "url": "https://finance.yahoo.com/quote/%5EGSPC/",
+    },
+    "比特币": {
+        "terms": ("比特币", "bitcoin", "btc", "crypto", "加密货币"),
+        "symbol": "BTC-USD",
+        "unit": "美元",
+        "source": "Yahoo Finance（BTC-USD）",
+        "url": "https://finance.yahoo.com/quote/BTC-USD/",
+    },
+    "黄金": {
+        "terms": ("黄金", "gold", "xau", "贵金属"),
+        "symbol": "GC=F",
+        "unit": "美元/金衡盎司",
+        "source": "Yahoo Finance（COMEX黄金期货）",
+        "url": "https://finance.yahoo.com/quote/GC=F/",
+    },
+    "铜": {
+        "terms": ("铜", "copper", "hg=f", "有色金属"),
+        "symbol": "HG=F",
+        "unit": "美元/磅",
+        "source": "Yahoo Finance（COMEX铜期货）",
+        "url": "https://finance.yahoo.com/quote/HG=F/",
+    },
+    "中国国债": {
+        "terms": ("中国国债", "中债", "中国债券", "中国10年", "china treasury", "china bond"),
+        "symbol": "CN10Y.CM",
+        "unit": "%（10年期收益率）",
+        "source": "Yahoo Finance（中国10年期国债候选代码）",
+        "url": "https://finance.yahoo.com/quote/CN10Y.CM/",
+    },
+    "美国国债": {
+        "terms": ("美国国债", "美债", "treasury", "us treasury", "10-year yield", "10年期"),
+        "symbol": "^TNX",
+        "unit": "%（10年期收益率）",
+        "source": "Yahoo Finance（^TNX，10年期收益率）",
+        "url": "https://finance.yahoo.com/quote/%5ETNX/",
+    },
+    "北京房产": {
+        "terms": ("北京房", "北京楼市", "北京房地产", "beijing housing", "beijing property", "房价"),
+        "symbol": None,
+        "unit": "",
+        "source": "国家统计局70个大中城市住宅销售价格月报",
+        "url": "https://www.stats.gov.cn/sj/zxfb/",
+    },
+}
 
 
 def parse_time(value: str) -> datetime | None:
@@ -148,7 +230,12 @@ def extract_author(content: str, summary: str) -> str:
     return f"@{match.group(1)}" if match else "来源用户"
 
 
-def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
+def find_x_posts(
+    db_path: Path,
+    since: datetime,
+    until: datetime,
+    translate: bool = True,
+) -> list[Post]:
     if not db_path.is_file():
         raise RuntimeError(f"找不到数据库：{db_path}")
 
@@ -174,7 +261,7 @@ def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
             continue
         summary = row["summary"] or ""
         text = summary.split("\n", 1)[1] if "\n" in summary else (row["content"] or row["title"] or "")
-        translated_text, translated = translate_to_chinese(text)
+        translated_text, translated = translate_to_chinese(text) if translate else (text, False)
         themes = classify(text + "\n" + translated_text)
         if not themes:
             continue
@@ -193,7 +280,144 @@ def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
     return posts
 
 
-def report_markdown(posts: Iterable[Post], since: datetime, until: datetime) -> str:
+def _fetch_yahoo_quote(symbol: str, asset: str, unit: str, source: str, source_url: str) -> AssetQuote:
+    """Fetch one quote from Yahoo's free chart endpoint.
+
+    The endpoint is used only for observable market data. A failed request is
+    represented in the report instead of being replaced by an inferred value.
+    """
+    try:
+        response = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{requests.utils.quote(symbol, safe='')}?range=2d&interval=1d",
+            headers={"User-Agent": "Mozilla/5.0 (FinancialReport; public market snapshot)"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        result = ((payload.get("chart") or {}).get("result") or [None])[0]
+        meta = (result or {}).get("meta") or {}
+        price = meta.get("regularMarketPrice")
+        if price is None:
+            closes = (((result or {}).get("indicators") or {}).get("quote") or [{}])[0].get("close") or []
+            price = next((item for item in reversed(closes) if item is not None), None)
+        if price is None:
+            raise ValueError("响应中没有价格")
+        previous = meta.get("previousClose") or meta.get("chartPreviousClose")
+        change = meta.get("regularMarketChangePercent")
+        if change is None and previous:
+            change = (float(price) - float(previous)) / float(previous) * 100
+        timestamp = datetime.now(BEIJING).strftime("%Y-%m-%d %H:%M")
+        return AssetQuote(asset, f"{float(price):,.4f}", unit, change, timestamp, source, source_url)
+    except (requests.RequestException, ValueError, TypeError, KeyError, IndexError) as exc:
+        return AssetQuote(asset, None, unit, None, None, source, source_url, f"行情接口不可用：{type(exc).__name__}")
+
+
+def fetch_asset_quotes() -> dict[str, AssetQuote]:
+    """Fetch the fixed benchmark set used by the asset section."""
+    quotes: dict[str, AssetQuote] = {}
+    def fetch_one(item: tuple[str, dict]) -> tuple[str, AssetQuote]:
+        asset, rule = item
+        if rule["symbol"]:
+            quote = _fetch_yahoo_quote(
+                rule["symbol"], asset, rule["unit"], rule["source"], rule["url"]
+            )
+        else:
+            quote = AssetQuote(
+                asset, None, rule["unit"], None, None, rule["source"], rule["url"],
+                "公开月度数据需从国家统计局发布后核对；本次不填充估算值",
+            )
+        return asset, quote
+
+    # Parallel requests keep a temporarily slow public endpoint from delaying
+    # the daily workflow while preserving deterministic report ordering below.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(fetch_one, item) for item in ASSET_RULES.items()]
+        for future in as_completed(futures):
+            asset, quote = future.result()
+            quotes[asset] = quote
+    return quotes
+
+
+def _asset_posts(posts: list[Post], terms: tuple[str, ...]) -> list[Post]:
+    terms_lower = tuple(term.lower() for term in terms)
+    return [
+        post for post in posts
+        if any(term in (post.original_text + " " + post.text).lower() for term in terms_lower)
+    ]
+
+
+def _post_stance(post: Post) -> str:
+    """Give a deliberately coarse, explainable label to an author's wording."""
+    bullish = ("上涨", "上行", "走强", "反弹", "利好", "看多", "bullish", "rally", "higher", "support")
+    bearish = ("下跌", "下行", "走弱", "回落", "利空", "看空", "bearish", "fall", "lower", "risk")
+    text = (post.original_text + " " + post.text).lower()
+    up = sum(text.count(word.lower()) for word in bullish)
+    down = sum(text.count(word.lower()) for word in bearish)
+    if up and down:
+        return "多空并陈"
+    if up:
+        return "偏多/上行"
+    if down:
+        return "偏空/下行"
+    return "中性/描述"
+
+
+def asset_analysis_markdown(posts: list[Post], quotes: dict[str, AssetQuote]) -> list[str]:
+    """Render transparent cross-checks between independent timeline authors."""
+    lines = [
+        "## 资产价格与专家池交叉分析",
+        "",
+        "本节的“专家池”指本次 X 关注时间线中被筛出的作者。价格是公开行情快照，观点是社交媒体原文的规则化整理；两者不是因果证明。",
+        "",
+        "| 资产 | 最近可用价格/收益率 | 变动 | 数据时间 | 数据来源 |",
+        "|---|---:|---:|---|---|",
+    ]
+    for asset in ASSET_RULES:
+        quote = quotes[asset]
+        if quote.value is None:
+            value = "暂无可靠数据"
+            change = "—"
+            timestamp = "—"
+        else:
+            value = f"{quote.value} {quote.unit}".strip()
+            change = f"{quote.change:+.2f}%" if quote.change is not None else "—"
+            timestamp = f"{quote.timestamp}（北京时间）"
+        lines.append(f"| **{asset}** | {value} | {change} | {timestamp} | [{quote.source}]({quote.source_url}) |")
+
+    for asset, rule in ASSET_RULES.items():
+        related = _asset_posts(posts, rule["terms"])
+        authors = {post.author for post in related}
+        lines.extend(["", f"### {asset}", ""])
+        quote = quotes[asset]
+        if quote.value is None:
+            lines.append(f"- **价格数据**：暂无可靠实时数据。{quote.error or ''} [查看来源说明]({quote.source_url})")
+        else:
+            move = f"，日变动 {quote.change:+.2f}%" if quote.change is not None else ""
+            lines.append(f"- **价格数据**：{quote.value} {quote.unit}{move}；更新时间 {quote.timestamp}（北京时间）。来源：[{quote.source}]({quote.source_url})。")
+        if not related:
+            lines.append("- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。")
+            continue
+        lines.append(f"- **专家池覆盖**：{len(related)} 条帖子，来自 {len(authors)} 位作者。")
+        for post in related[:4]:
+            lines.append(f"- **{post.author}**（{post.published:%m-%d %H:%M}，{_post_stance(post)}）：{post.text} [原帖]({post.link})")
+        stances = Counter(_post_stance(post) for post in related)
+        if len(authors) >= 2:
+            if len(stances) == 1:
+                conclusion = f"交叉结论：{len(authors)} 位作者的表述方向一致（{next(iter(stances))}），但仍需核对原始数据。"
+            else:
+                conclusion = "交叉结论：不同作者存在方向或语气差异，当前只能标记为分歧，不能合并成单一预测。"
+        else:
+            conclusion = "交叉结论：单一来源，暂不构成交叉验证。"
+        lines.append(f"- **{conclusion}**")
+    return lines
+
+
+def report_markdown(
+    posts: Iterable[Post],
+    since: datetime,
+    until: datetime,
+    quotes: dict[str, AssetQuote] | None = None,
+) -> str:
     posts = list(posts)
     theme_counts = Counter(theme for post in posts for theme in post.themes)
     translated_count = sum(post.translated for post in posts)
@@ -219,6 +443,9 @@ def report_markdown(posts: Iterable[Post], since: datetime, until: datetime) -> 
             lines.append(f"- **{theme}**：{count} 条")
     else:
         lines.append("- 该时段没有筛出经济相关帖子。")
+
+    lines.extend([""])
+    lines.extend(asset_analysis_markdown(posts, quotes or fetch_asset_quotes()))
 
     for theme, _ in theme_counts.most_common():
         lines.extend(["", f"## {theme}", ""])
@@ -252,8 +479,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成 X 关注时间线经济简报")
     parser.add_argument("--hours", type=int, default=24, help="回看小时数，默认 24")
     parser.add_argument("--date", help="报告日期 YYYY-MM-DD，默认取当前北京时间")
+    parser.add_argument(
+        "--until",
+        help="统计截止时间 ISO-8601（主要用于重建历史报告）；未提供时取当前北京时间",
+    )
     parser.add_argument("--db", type=Path, default=PROJECT_ROOT / "data" / "news_data.db")
     parser.add_argument("--output", type=Path, help="覆盖默认报告输出路径")
+    parser.add_argument("--no-translate", action="store_true", help="重建历史报告时跳过外部翻译请求")
     args = parser.parse_args()
     if args.hours < 1:
         parser.error("--hours 必须至少为 1")
@@ -269,7 +501,16 @@ def main() -> int:
     args = parse_args()
     now = datetime.now(BEIJING).replace(second=0, microsecond=0)
     report_date = args.date or now.strftime("%Y-%m-%d")
-    until = now
+    if args.until:
+        try:
+            until = datetime.fromisoformat(args.until.replace("Z", "+00:00"))
+            if until.tzinfo is None:
+                until = until.replace(tzinfo=BEIJING)
+            until = until.astimezone(BEIJING).replace(second=0, microsecond=0)
+        except ValueError:
+            raise SystemExit("--until 必须是可解析的 ISO-8601 时间")
+    else:
+        until = now
     since = until - timedelta(hours=args.hours)
     output = args.output or (
         PROJECT_ROOT
@@ -280,9 +521,10 @@ def main() -> int:
         / "reports"
         / f"x_timeline_economic_brief_{report_date}.md"
     )
-    posts = find_x_posts(args.db, since, until)
+    posts = find_x_posts(args.db, since, until, translate=not args.no_translate)
+    quotes = fetch_asset_quotes()
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(report_markdown(posts, since, until), encoding="utf-8")
+    output.write_text(report_markdown(posts, since, until, quotes), encoding="utf-8")
     print(f"[OK] 生成 X 经济简报：{output}（筛出 {len(posts)} 条帖子）")
     return 0
 

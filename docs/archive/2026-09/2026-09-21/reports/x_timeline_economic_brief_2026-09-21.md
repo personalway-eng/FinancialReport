@@ -131,6 +131,79 @@
   - 中文：黄金价格是否正在接近5000 $以上？全球黄金ETF持有量高达约1亿盎司，接近至少9个月以来的最高水平。自7月低点以来，黄金持有量增长了400多万盎司，超过了4月至7月期间的跌幅。https://t.co/VeQA4iOxl2
   - 英文原文：Are gold prices heading to $5,000+? Global gold ETF holdings are up to ~100 million ounces, near their highest level in at least 9 months. Gold holdings have risen over +4 million ounces since their July low, more than recovering the decline recorded between…
 
+
+## 资产价格与专家池交叉分析
+
+本节的“专家池”指本次 X 关注时间线中被筛出的作者。价格是公开行情快照，观点是社交媒体原文的规则化整理；两者不是因果证明。
+
+| 资产 | 最近可用价格/收益率 | 变动 | 数据时间 | 数据来源 |
+|---|---:|---:|---|---|
+| **A股** | 3,949.9067 点 | +0.97% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（上证综合指数）](https://finance.yahoo.com/quote/000001.SS/) |
+| **港股** | 25,042.7100 点 | +1.18% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（恒生指数）](https://finance.yahoo.com/quote/%5EHSI/) |
+| **美股** | 7,650.5000 点 | +0.17% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（标普500指数）](https://finance.yahoo.com/quote/%5EGSPC/) |
+| **比特币** | 85,151.0900 美元 | +5.84% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（BTC-USD）](https://finance.yahoo.com/quote/BTC-USD/) |
+| **黄金** | 4,406.1000 美元/金衡盎司 | -0.42% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（COMEX黄金期货）](https://finance.yahoo.com/quote/GC=F/) |
+| **铜** | 6.8200 美元/磅 | +1.92% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（COMEX铜期货）](https://finance.yahoo.com/quote/HG=F/) |
+| **中国国债** | 暂无可靠数据 | — | — | [Yahoo Finance（中国10年期国债候选代码）](https://finance.yahoo.com/quote/CN10Y.CM/) |
+| **美国国债** | 4.9980 %（10年期收益率） | +1.03% | 2026-09-21 20:08（北京时间） | [Yahoo Finance（^TNX，10年期收益率）](https://finance.yahoo.com/quote/%5ETNX/) |
+| **北京房产** | 暂无可靠数据 | — | — | [国家统计局70个大中城市住宅销售价格月报](https://www.stats.gov.cn/sj/zxfb/) |
+
+### A股
+
+- **价格数据**：3,949.9067 点，日变动 +0.97%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（上证综合指数）](https://finance.yahoo.com/quote/000001.SS/)。
+- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。
+
+### 港股
+
+- **价格数据**：25,042.7100 点，日变动 +1.18%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（恒生指数）](https://finance.yahoo.com/quote/%5EHSI/)。
+- **专家池覆盖**：1 条帖子，来自 1 位作者。
+- **大漂亮| C Labs (@giantcutie666)**（09-21 13:04，中性/描述）：西贝在23年消费赛道火的时候，说要上港股，融资估值高达200亿 自从和罗永浩吵了一架之后，不仅上港股的计划泡汤了，最近一轮的估值也已经跌到了10亿😅 如果之前融资有对赌协议的话，那贾国龙是真的会要赔到破产🤣 https://t.co/Vm9RJbBA5L [原帖](https://x.com/giantcutie666/status/2101900396625056061)
+- **交叉结论：单一来源，暂不构成交叉验证。**
+
+### 美股
+
+- **价格数据**：7,650.5000 点，日变动 +0.17%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（标普500指数）](https://finance.yahoo.com/quote/%5EGSPC/)。
+- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。
+
+### 比特币
+
+- **价格数据**：85,151.0900 美元，日变动 +5.84%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（BTC-USD）](https://finance.yahoo.com/quote/BTC-USD/)。
+- **专家池覆盖**：3 条帖子，来自 1 位作者。
+- **Global Markets Investor (@GlobalMktObserv)**（09-21 12:06，中性/描述）：⚠️日本央行正在经历数十年来最快的加息周期：日本央行将政策利率上调+25个基点，至1.25% ，这是31年来的最高水平，这是上田行长领导下的第六次加息。点击图片查看完整洞察👇https://t.co/0BtCGgrmCK [原帖](https://x.com/GlobalMktObserv/status/2101885655907258386)
+- **Global Markets Investor (@GlobalMktObserv)**（09-21 09:33，中性/描述）：⚠️全球债务危机一览：世界政府债务飙升至创纪录的109万亿美元，约占全球GDP的95%。与此同时，企业债务跃升至创纪录的179万亿美元，相当于全球GDP的约155%。点击图片查看完整洞察👇https://t.co/0BtCGgrmCK [原帖](https://x.com/GlobalMktObserv/status/2101847139429011504)
+- **Global Markets Investor (@GlobalMktObserv)**（09-21 06:32，中性/描述）：⚠️美国国债收益率对科技股发出警告： 10年期国债收益率近三年来首次飙升至5%以上，给美国股市带来了新的压力。点击图片查看完整洞察👇https://t.co/0BtCGgrmCK [原帖](https://x.com/GlobalMktObserv/status/2101801631146823920)
+- **交叉结论：单一来源，暂不构成交叉验证。**
+
+### 黄金
+
+- **价格数据**：4,406.1000 美元/金衡盎司，日变动 -0.42%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（COMEX黄金期货）](https://finance.yahoo.com/quote/GC=F/)。
+- **专家池覆盖**：1 条帖子，来自 1 位作者。
+- **The Kobeissi Letter (@KobeissiLetter)**（09-21 06:22，中性/描述）：黄金价格是否正在接近5000 $以上？全球黄金ETF持有量高达约1亿盎司，接近至少9个月以来的最高水平。自7月低点以来，黄金持有量增长了400多万盎司，超过了4月至7月期间的跌幅。https://t.co/VeQA4iOxl2 [原帖](https://x.com/KobeissiLetter/status/2101799240104095924)
+- **交叉结论：单一来源，暂不构成交叉验证。**
+
+### 铜
+
+- **价格数据**：6.8200 美元/磅，日变动 +1.92%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（COMEX铜期货）](https://finance.yahoo.com/quote/HG=F/)。
+- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。
+
+### 中国国债
+
+- **价格数据**：暂无可靠实时数据。行情接口不可用：HTTPError [查看来源说明](https://finance.yahoo.com/quote/CN10Y.CM/)
+- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。
+
+### 美国国债
+
+- **价格数据**：4.9980 %（10年期收益率），日变动 +1.03%；更新时间 2026-09-21 20:08（北京时间）。来源：[Yahoo Finance（^TNX，10年期收益率）](https://finance.yahoo.com/quote/%5ETNX/)。
+- **专家池覆盖**：2 条帖子，来自 2 位作者。
+- **qinbafrank (@qinbafrank)**（09-21 13:40，中性/描述）：油价不出问题，那么市场也不会出问题。这里的逻辑在于：若油价不出问题，美债收益率短期内也不太会出问题，市场交易油价和长债利率触顶顶可能性，因为产业基本面还是强劲，当宏观扰动暂时褪出，自然在这个期间情绪会持续修复。 https://t.co/a6Gm64O1cV [原帖](https://x.com/qinbafrank/status/2101909380681859456)
+- **Global Markets Investor (@GlobalMktObserv)**（09-21 06:32，中性/描述）：⚠️美国国债收益率对科技股发出警告： 10年期国债收益率近三年来首次飙升至5%以上，给美国股市带来了新的压力。点击图片查看完整洞察👇https://t.co/0BtCGgrmCK [原帖](https://x.com/GlobalMktObserv/status/2101801631146823920)
+- **交叉结论：2 位作者的表述方向一致（中性/描述），但仍需核对原始数据。**
+
+### 北京房产
+
+- **价格数据**：暂无可靠实时数据。公开月度数据需从国家统计局发布后核对；本次不填充估算值 [查看来源说明](https://www.stats.gov.cn/sj/zxfb/)
+- **专家池覆盖**：过去24小时没有匹配到关注作者对该资产的直接讨论，未作方向判断。
+
 ## 阅读建议
 
 1. 优先核对原帖中的数据、引述和链接；社交媒体观点可能存在遗漏或偏差。
