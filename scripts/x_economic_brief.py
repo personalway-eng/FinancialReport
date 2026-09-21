@@ -97,6 +97,12 @@ def translate_to_chinese(text: str) -> tuple[str, bool]:
     text = re.sub(r"\s+", " ", text or "").strip()
     if not text or not re.search(r"[A-Za-z]{3}", text):
         return text, False
+    # Links and account names can contain Latin characters inside an otherwise
+    # Chinese post. Treat a post as Chinese when CJK text clearly dominates.
+    cjk_count = len(re.findall(r"[\u4e00-\u9fff]", text))
+    latin_count = len(re.findall(r"[A-Za-z]", text))
+    if cjk_count >= 8 and cjk_count >= latin_count:
+        return text, False
     try:
         response = requests.get(
             "https://translate.googleapis.com/translate_a/single",
@@ -112,6 +118,23 @@ def translate_to_chinese(text: str) -> tuple[str, bool]:
             time.sleep(0.08)
             return translated, True
     except (requests.RequestException, ValueError, TypeError, IndexError):
+        pass
+
+    # Google Translate may rate-limit GitHub Actions. MyMemory is used only as
+    # a fallback and keeps the same best-effort behavior.
+    try:
+        response = requests.get(
+            "https://api.mymemory.translated.net/get",
+            params={"q": text, "langpair": "en|zh-CN"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        translated = ((payload.get("responseData") or {}).get("translatedText") or "").strip()
+        if translated and translated.lower() != text.lower():
+            time.sleep(0.08)
+            return translated, True
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
         pass
     return text, False
 
