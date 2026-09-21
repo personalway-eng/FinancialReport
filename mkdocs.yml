@@ -67,6 +67,7 @@ markdown_extensions:
     permalink: true
 nav:
 - 首页: index.md
+- 历史报告: archive/index.md
 - 使用指南:
   - X 关注时间线接入: X_API_INTEGRATION.md
 - 分析报告:

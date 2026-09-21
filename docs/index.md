@@ -3,6 +3,7 @@
 本页展示最新生成的 **X 关注时间线经济简报**。每天北京时间 08:30 更新；内容仅供信息参考，不构成投资建议。
 
 [打开独立报告页](./archive/2026-09/2026-09-21/reports/x_timeline_economic_brief_2026-09-21.md){ .md-button .md-button--primary }
+[查询历史报告](./archive/index.md){ .md-button }
 
 ---
 

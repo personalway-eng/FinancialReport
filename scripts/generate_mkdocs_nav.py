@@ -11,12 +11,14 @@ import sys
 import yaml
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 ARCHIVE_ROOT = Path('docs/archive')
 HOME_PAGE = Path('docs/index.md')
+HISTORY_PAGE = ARCHIVE_ROOT / 'index.md'
 
 def _is_date_dir_name(name: str) -> bool:
     return re.match(r'^\d{4}-\d{2}-\d{2}', name) is not None
@@ -50,6 +52,40 @@ def get_latest_x_economic_brief():
         return None
     return max(briefs, key=lambda item: item.as_posix())
 
+def update_history_index():
+    """生成按月份和日期倒序排列的历史报告索引。"""
+    lines = [
+        "# 历史分析报告",
+        "",
+        "这里集中列出系统已经生成的历史报告，最新日期在最前。点击报告名称即可查看完整内容。",
+        "",
+    ]
+    total = 0
+    for month, date_dirs in get_archive_structure().items():
+        month_display = f"{month[:4]}年{month[5:]}月"
+        month_lines = [f"## {month_display}", ""]
+        for date_dir in date_dirs:
+            reports_dir = date_dir / 'reports'
+            reports = sorted(reports_dir.glob('*.md')) if reports_dir.is_dir() else []
+            if not reports:
+                continue
+            month_lines.append(f"### {date_dir.name}")
+            for report in reports:
+                relative = report.relative_to(ARCHIVE_ROOT).as_posix()
+                link = quote(relative, safe='/:@-._~')
+                month_lines.append(f"- [{format_report_name(report.name)}]({link})")
+                total += 1
+            month_lines.append("")
+        if len(month_lines) > 2:
+            lines.extend(month_lines)
+
+    if total == 0:
+        lines.append("当前还没有可查看的历史报告。")
+    lines.extend(["", f"共收录 **{total}** 份报告。"])
+    HISTORY_PAGE.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_PAGE.write_text("\n".join(lines) + "\n", encoding='utf-8')
+    print(f"✅ 历史报告索引已更新：{total} 份")
+
 def update_homepage():
     """把首页更新为最新 X 经济简报，避免用户只能通过多层导航查阅报告。"""
     latest_report = get_latest_x_economic_brief()
@@ -71,6 +107,7 @@ def update_homepage():
 本页展示最新生成的 **X 关注时间线经济简报**。每天北京时间 08:30 更新；内容仅供信息参考，不构成投资建议。
 
 [打开独立报告页](./{report_path}){{ .md-button .md-button--primary }}
+[查询历史报告](./archive/index.md){{ .md-button }}
 
 ---
 
@@ -234,6 +271,7 @@ def generate_nav_structure():
     """生成导航结构"""
     nav = [
         {"首页": "index.md"},
+        {"历史报告": "archive/index.md"},
         {"使用指南": [
             {"X 关注时间线接入": "X_API_INTEGRATION.md"},
         ]},
@@ -297,7 +335,7 @@ def generate_nav_structure():
                     month_nav[month_display].append(date_nav)
             
             if month_nav[month_display]:  # 只有当有内容时才添加
-                nav[2]["分析报告"].append(month_nav)
+                nav[3]["分析报告"].append(month_nav)
     
     return nav
 
@@ -314,6 +352,7 @@ def update_mkdocs_config():
     config['nav'] = new_nav
 
     # 首页与导航必须使用同一次扫描的报告数据，确保最新报告一眼可见。
+    update_history_index()
     update_homepage()
     
     # 写回文件
