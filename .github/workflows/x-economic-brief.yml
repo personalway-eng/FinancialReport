@@ -46,13 +46,13 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Collect X following timeline
-        if: ${{ github.event_name == 'schedule' || inputs.collect_x || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-x-api]')) }}
+        if: ${{ github.event_name == 'schedule' || inputs.collect_x }}
         env:
           X_USER_ACCESS_TOKEN: ${{ secrets.X_USER_ACCESS_TOKEN }}
         run: python scripts/x_timeline_collector.py --max-results 100 --pages 1
 
       - name: Generate economic brief
-        if: ${{ github.event_name == 'schedule' || inputs.collect_x || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-x-api]')) }}
+        if: ${{ github.event_name == 'schedule' || inputs.collect_x }}
         run: python scripts/x_economic_brief.py --hours 24
 
       - name: Generate documentation navigation and build site
@@ -61,7 +61,7 @@ jobs:
           mkdocs build
 
       - name: Commit the new report
-        if: ${{ github.event_name == 'schedule' || inputs.collect_x || (github.event_name == 'push' && contains(github.event.head_commit.message, '[test-x-api]')) }}
+        if: ${{ github.event_name == 'schedule' || inputs.collect_x }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
