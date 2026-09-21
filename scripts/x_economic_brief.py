@@ -12,11 +12,14 @@ from __future__ import annotations
 import argparse
 import re
 import sqlite3
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
+
+import requests
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -55,8 +58,10 @@ class Post:
     link: str
     published: datetime
     text: str
+    original_text: str
     author: str
     themes: tuple[str, ...]
+    translated: bool
 
 
 def parse_time(value: str) -> datetime | None:
@@ -83,6 +88,43 @@ def classify(text: str) -> tuple[str, ...]:
     return tuple(matched)
 
 
+def translate_to_chinese(text: str) -> tuple[str, bool]:
+    """Translate an English post with a public translation endpoint.
+
+    Translation is best effort: a temporary network failure keeps the original
+    text so one unavailable translation request cannot stop the daily report.
+    """
+    text = re.sub(r"\s+", " ", text or "").strip()
+    if not text or not re.search(r"[A-Za-z]{3}", text):
+        return text, False
+    try:
+        response = requests.get(
+            "https://translate.googleapis.com/translate_a/single",
+            params={"client": "gtx", "sl": "auto", "tl": "zh-CN", "dt": "t", "q": text},
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        translated = "".join(
+            part[0] for part in (payload[0] if payload else []) if isinstance(part, list) and part
+        ).strip()
+        if translated:
+            time.sleep(0.08)
+            return translated, True
+    except (requests.RequestException, ValueError, TypeError, IndexError):
+        pass
+    return text, False
+
+
+def extract_author(content: str, summary: str) -> str:
+    """Recover the display name and handle stored by the X collector."""
+    match = re.search(r"作者：(.+?)\s*\(@([A-Za-z0-9_]+)\)", content or "")
+    if match:
+        return f"{compact(match.group(1), 80)} (@{match.group(2)})"
+    match = re.match(r"@([A-Za-z0-9_]+)", summary or "")
+    return f"@{match.group(1)}" if match else "来源用户"
+
+
 def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
     if not db_path.is_file():
         raise RuntimeError(f"找不到数据库：{db_path}")
@@ -107,20 +149,22 @@ def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
         published = parse_time(row["published"] or "")
         if not published or not since <= published < until:
             continue
-        text = row["summary"] or row["content"] or row["title"] or ""
-        themes = classify(text)
+        summary = row["summary"] or ""
+        text = summary.split("\n", 1)[1] if "\n" in summary else (row["content"] or row["title"] or "")
+        translated_text, translated = translate_to_chinese(text)
+        themes = classify(text + "\n" + translated_text)
         if not themes:
             continue
-        author_match = re.search(r"@([A-Za-z0-9_]+)", text)
-        author = f"@{author_match.group(1)}" if author_match else "来源用户"
         posts.append(
             Post(
-                title=compact(row["title"] or text, 180),
+                title=compact(translated_text, 180),
                 link=row["link"],
                 published=published,
-                text=compact(text),
-                author=author,
+                text=compact(translated_text),
+                original_text=compact(text),
+                author=extract_author(row["content"] or "", summary),
                 themes=themes,
+                translated=translated,
             )
         )
     return posts
@@ -129,6 +173,7 @@ def find_x_posts(db_path: Path, since: datetime, until: datetime) -> list[Post]:
 def report_markdown(posts: Iterable[Post], since: datetime, until: datetime) -> str:
     posts = list(posts)
     theme_counts = Counter(theme for post in posts for theme in post.themes)
+    translated_count = sum(post.translated for post in posts)
     by_theme: dict[str, list[Post]] = defaultdict(list)
     for post in posts:
         for theme in post.themes:
@@ -139,7 +184,7 @@ def report_markdown(posts: Iterable[Post], since: datetime, until: datetime) -> 
         "",
         f"- 统计区间：{since:%Y-%m-%d %H:%M} 至 {until:%Y-%m-%d %H:%M}（北京时间）",
         f"- 数据范围：通过 X 官方 API 读取的关注时间线；共筛出 **{len(posts)}** 条经济相关帖子。",
-        "- 方法：基于公开可复核的关键词分类，不使用付费模型；同一帖子可能出现在多个主题。",
+        f"- 方法：基于公开可复核的关键词分类；其中 **{translated_count}** 条英文帖子已自动翻译为中文，并保留英文原文；同一帖子可能出现在多个主题。",
         "",
         "> 提醒：以下是社交媒体信息整理，不代表事实已获独立核验，也不是投资建议。请打开原帖并结合可靠来源判断。",
         "",
@@ -157,10 +202,12 @@ def report_markdown(posts: Iterable[Post], since: datetime, until: datetime) -> 
         for post in by_theme[theme][:8]:
             lines.extend(
                 [
-                    f"- {post.published:%H:%M} · {post.author} · [{post.title}]({post.link})",
-                    f"  - {post.text}",
+                    f"- {post.published:%H:%M} · **{post.author}** · [查看原帖]({post.link})",
+                    f"  - 中文：{post.text}",
                 ]
             )
+            if post.translated:
+                lines.append(f"  - 英文原文：{post.original_text}")
         if len(by_theme[theme]) > 8:
             lines.append(f"- 其余 {len(by_theme[theme]) - 8} 条同主题帖子已省略。")
 
